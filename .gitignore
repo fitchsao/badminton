@@ -1,0 +1,35 @@
+# 依赖
+node_modules/
+.pnp
+.pnp.js
+
+# 构建产物
+dist/
+build/
+.vite/
+
+# 环境变量(包含 App Secret 等敏感信息,绝对不能提交)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# 日志
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# 数据库数据(docker volume 挂载)
+data/
+pgdata/
+
+# TypeScript 缓存
+*.tsbuildinfo
