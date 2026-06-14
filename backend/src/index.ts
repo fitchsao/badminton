@@ -63,9 +63,9 @@ async function main() {
   app.get("/health", async () => ({ ok: true, time: new Date().toISOString() }));
 
   // 管理接口: 手动触发本周通知(用于首次启动/调试)
-  // 简易保护: 必须带 ADMIN_TOKEN
+  // 简易保护: 必须带 ADMIN_TRIGGER_TOKEN
   app.post("/admin/trigger-signup", async (req, reply) => {
-    const expected = process.env.ADMIN_TOKEN;
+    const expected = process.env.ADMIN_TRIGGER_TOKEN;
     if (!expected || req.headers.authorization !== `Bearer ${expected}`) {
       reply.code(403);
       return { error: "forbidden" };
