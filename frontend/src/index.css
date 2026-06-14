@@ -1,39 +1,44 @@
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&family=Outfit:wght@600;700;800;900&display=swap');
 
 :root {
-  /* ============ Design Tokens ============ */
-  --bg: #1A1B3A;
-  --bg-card: #252755;
-  --bg-card-alt: #2D2F60;
-  --bg-overlay: rgba(255, 255, 255, 0.04);
-  --bg-input: rgba(255, 255, 255, 0.06);
+  /* ============ Design Tokens — Duolingo 亮色主题 ============ */
+  --bg: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-card-alt: #F7F7F7;
+  --bg-overlay: #F4F6F8;
+  --bg-input: #F4F6F8;
 
-  --primary: #A78BFA;
-  --primary-strong: #8B6FE6;
-  --primary-soft: rgba(167, 139, 250, 0.18);
-  --primary-ghost: rgba(167, 139, 250, 0.08);
+  /* 主色:多邻国绿(用于按钮/填充);文字用更深的绿见主题层 */
+  --primary: #58CC02;
+  --primary-strong: #58A700;
+  --primary-ink: #46A302;        /* 亮底上的绿色文字(对比度更高) */
+  --primary-soft: rgba(88, 204, 2, 0.16);
+  --primary-ghost: rgba(88, 204, 2, 0.09);
 
-  --accent: #FB7185;
-  --accent-soft: rgba(251, 113, 133, 0.15);
+  --accent: #1CB0F6;             /* 多邻国蓝 */
+  --accent-strong: #1899D6;
+  --accent-soft: rgba(28, 176, 246, 0.14);
 
-  --success: #34D399;
-  --success-soft: rgba(52, 211, 153, 0.15);
+  --success: #58A700;
+  --success-soft: rgba(88, 204, 2, 0.15);
 
-  --warning: #FBBF24;
-  --warning-soft: rgba(251, 191, 36, 0.15);
+  --warning: #E6A700;            /* 文字用的深金 */
+  --warning-fill: #FFC800;       /* 填充用的亮金 */
+  --warning-soft: rgba(255, 200, 0, 0.20);
 
-  --danger: #F87171;
-  --danger-soft: rgba(248, 113, 113, 0.15);
+  --danger: #FF4B4B;
+  --danger-strong: #E63A3A;
+  --danger-soft: rgba(255, 75, 75, 0.12);
 
-  --text: #F5F3FF;
-  --text-muted: #A5A5C8;
-  --text-dim: #6B6B8C;
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.14);
+  --text: #3C3C3C;
+  --text-muted: #777777;
+  --text-dim: #AFAFAF;
+  --border: #E5E5E5;
+  --border-strong: #D6D6D6;
 
-  --radius-sm: 10px;
+  --radius-sm: 12px;
   --radius: 16px;
-  --radius-lg: 22px;
+  --radius-lg: 20px;
   --radius-pill: 999px;
 
   font-family: "Nunito", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
@@ -49,11 +54,11 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
-  /* 微光晕背景:给死板的深色加一点深度 */
+  /* 亮色柔和背景:顶部一点点天蓝/草绿,整体干净 */
   background:
-    radial-gradient(ellipse 60% 40% at 30% 0%, rgba(167, 139, 250, 0.10), transparent 60%),
-    radial-gradient(ellipse 50% 30% at 70% 100%, rgba(251, 113, 133, 0.05), transparent 60%),
-    var(--bg);
+    radial-gradient(ellipse 70% 36% at 50% 0%, #EAF7FF, transparent 60%),
+    radial-gradient(ellipse 60% 30% at 50% 100%, #F3FBEC, transparent 60%),
+    #F7F9FB;
   background-attachment: fixed;
 }
 
@@ -1764,3 +1769,121 @@ select option { background: var(--bg-card); color: var(--text); }
 .text-link:hover {
   text-decoration: underline;
 }
+
+/* ====================================================== */
+/* ====== Duolingo 主题层(覆盖硬编码深色 / 3D 按钮)===== */
+/*  纯 UI:翻转亮底白字、招牌 3D 按钮、徽章与低对比色修正   */
+/* ====================================================== */
+
+/* —— 卡片更"敦实":2px 描边 + 极轻投影 —— */
+.card,
+.progress-bar-wrap {
+  border: 2px solid var(--border);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.02);
+}
+.card.glow {
+  background: linear-gradient(135deg, var(--primary-ghost), transparent 55%), #fff;
+  border-color: var(--primary-soft);
+}
+
+/* —— 品牌:去掉深色发光 —— */
+.brand-icon { filter: none; }
+
+/* —— 3D 按钮(多邻国招牌:底部实色阴影 + 点击下压)—— */
+.btn-primary { color: #fff; box-shadow: 0 4px 0 var(--primary-strong); }
+.btn-primary:hover:not(:disabled) { background: var(--primary); filter: brightness(1.03); }
+.btn-danger { color: #fff; box-shadow: 0 4px 0 var(--danger-strong); }
+.btn-secondary {
+  background: #fff; color: var(--text-muted);
+  border: 2px solid var(--border); box-shadow: 0 3px 0 var(--border-strong);
+  font-weight: 800;
+}
+.btn-secondary:hover:not(:disabled) { background: #fff; border-color: var(--border-strong); }
+.btn-primary:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 2px 0 var(--primary-strong); }
+.btn-danger:active:not(:disabled)  { transform: translateY(2px); box-shadow: 0 2px 0 var(--danger-strong); }
+.btn-secondary:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--border-strong); }
+
+/* —— 链接 / 文字按钮:深绿更清晰 —— */
+.btn-link, .text-link, .full-group-link { color: var(--primary-ink); }
+
+/* —— 顶部 tab:激活=绿底白字 + 绿阴影 —— */
+.tab-bar-item.active { color: #fff; box-shadow: 0 3px 0 var(--primary-strong); }
+.tab.active { color: var(--primary-ink); border-bottom-color: var(--primary-ink); }
+
+/* —— 段控激活 / 头像:白字 —— */
+.seg-item.active { color: #fff; }
+.avatar { color: #fff; }
+
+/* —— 进度条:已完成=绿,当前=蓝(更醒目)+ 蓝光圈 + 蓝标签 —— */
+.progress-dot.current {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+.progress-label.current { color: var(--accent-strong); }
+
+/* —— 亮底上的"绿色文字"统一用深绿,保证可读 —— */
+.badge-primary,
+.status-title,
+.my-status-card .status-title,
+.hero-time,
+.ranking-stat strong,
+.preview-stat-value.accent,
+.stat-cell.accent .stat-value,
+.hero-title-tag,
+.preview-hero-title {
+  color: var(--primary-ink);
+}
+.score-display { color: var(--primary-ink); background: var(--primary-soft); }
+
+/* —— 倒计时数字:绿;紧急=红 —— */
+.countdown strong { color: var(--primary-ink); }
+.countdown-urgent strong { color: var(--danger); }
+
+/* —— 胜负差(原浅色在白底太浅)→ 深绿 / 红 —— */
+.ranking-diff.pos, .my-stats-card .stat-val.pos { color: var(--primary-strong); }
+.ranking-diff.neg, .my-stats-card .stat-val.neg { color: var(--danger); }
+
+/* —— 候补金色文字:深金 —— */
+.my-status-card.waitlist .status-title { color: var(--warning); }
+
+/* —— 顶部 LIVE 横幅:绿色系替换紫色 —— */
+.status-banner.live { background: var(--primary-soft); border-color: var(--primary-soft); color: var(--primary-ink); }
+
+/* —— 比赛进行中高亮:绿光圈替换紫色 —— */
+.match-row.match-current {
+  box-shadow: 0 0 0 2px var(--primary), 0 6px 18px -10px var(--primary-strong);
+  background: var(--primary-ghost);
+}
+.match-row.match-current::before { border-color: var(--primary-soft); }
+@keyframes pulseRing {
+  0%, 100% { box-shadow: 0 0 0 0 var(--primary-soft); }
+  50% { box-shadow: 0 0 0 6px rgba(88, 204, 2, 0); }
+}
+
+/* —— 段位徽章:亮底版(浅底深字)—— */
+.tier-bronze   { background:#FBEAD9; color:#B45309; border-color:#F2D2B0; }
+.tier-silver   { background:#EEF1F4; color:#64748B; border-color:#DCE2E8; }
+.tier-gold     { background:#FFF3CC; color:#B7791F; border-color:#FAE08A; }
+.tier-platinum { background:#E3F5FE; color:#0E7DAA; border-color:#C4EAFB; }
+.tier-diamond  { background:#EFEAFE; color:#7C5CDB; border-color:#DDD2FB; }
+.tier-star     { background:#FDE9F3; color:#C04A86; border-color:#F8CFE3; }
+.tier-king     { background:linear-gradient(135deg,#FFF0C2,#FBD9E8); color:#A9700A; border-color:#F3D98A; box-shadow:0 0 8px rgba(255,200,0,.18); }
+.tier-pending  { background:#F0F1F3; color:var(--text-muted); border-color:#E2E5E9; }
+
+/* —— 底部 tab bar:白卡 + 轻阴影 + 2px 顶边 —— */
+.bottom-tab-bar {
+  background: #fff;
+  border-top: 2px solid var(--border);
+  box-shadow: 0 -2px 16px rgba(0, 0, 0, 0.05);
+}
+
+/* —— 弹窗遮罩:亮底下淡一点的冷灰 —— */
+.modal-overlay, .drawer-backdrop { background: rgba(30, 40, 60, 0.45); }
+
+/* —— 输入/选择聚焦:绿描边光环 —— */
+.text-input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-ghost); }
+
+/* —— action chip:白底 3D —— */
+.btn-action { background: #fff; box-shadow: 0 2px 0 var(--border-strong); }
+.btn-action:hover { color: var(--primary-ink); border-color: var(--primary); }
