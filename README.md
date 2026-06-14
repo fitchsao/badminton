@@ -187,6 +187,94 @@ Duration    ~15s
 
 ---
 
+## 🎮 在测试环境模拟全流程
+
+> ⚠️ 以下全部依赖 `DEV_SECRET`。**只在测试环境开启**:`.env` 里设一个随机值(`openssl rand -hex 16`)并重启 backend;**生产环境必须留空**,否则任何人都能伪造登录。
+
+开启后会出现一组 `/api/dev/*` 调试端点,可以**伪登录任意用户、一键重置数据、把活动瞬间切到任意阶段** —— 无需等到周一 10:30,也不需要多个飞书账号,即可在测试企业里跑通所有报名流程。
+
+| 调试端点 | 作用 |
+|---|---|
+| `POST /api/dev/reset` | 重置 mock 数据(预置 15 个报名:11 正式 + 4 候补,留 5 个正式位) |
+| `POST /api/dev/session-stage` | 把活动切到指定阶段:`preview` / `signup_open` / `signup_closed` / `in_progress` / `finished` |
+| `POST /api/dev/login` | 伪登录任意用户(`openId` + `name`),跳过飞书 OAuth |
+
+### 方式 A:自动化(推荐,一条命令跑 25 个用例)
+
+```bash
+cd e2e-tests
+cp .env.example .env          # 填 BASE_URL + DEV_SECRET
+npm install && npm test
+```
+
+覆盖:报名 / 取消 / 重报、候补晋升、比分、段位、订阅、Admin 权限。详见 [e2e-tests/README.md](./e2e-tests/README.md)。
+
+### 方式 B:手动模拟(curl,边点边看)
+
+```bash
+BASE=https://你的测试域名
+DEV=你的_DEV_SECRET
+
+# ① 重置数据 + ② 切到"报名中"
+curl -s -X POST $BASE/api/dev/reset         -H 'content-type: application/json' -d "{\"secret\":\"$DEV\"}"
+curl -s -X POST $BASE/api/dev/session-stage -H 'content-type: application/json' -d "{\"secret\":\"$DEV\",\"stage\":\"signup_open\"}"
+```
+
+**模拟「报名 → 取消 → 重报」**
+```bash
+# 伪登录为测试用户 alice(cookie 存进 jar 文件)
+curl -s -c jar -X POST $BASE/api/dev/login -H 'content-type: application/json' \
+  -d "{\"secret\":\"$DEV\",\"openId\":\"test_user_alice\",\"name\":\"测试-Alice\"}"
+
+SID=$(curl -s -b jar $BASE/api/sessions/current | jq .session.id)    # 当前场次 id
+
+# 报名(首次必须带 gender),再取消
+curl -s -b jar -X POST $BASE/api/sessions/$SID/signup -H 'content-type: application/json' \
+  -d '{"preferredCourtType":"竞技","gender":"男"}'
+curl -s -b jar -X POST $BASE/api/sessions/$SID/cancel
+```
+
+**模拟「填满 → 进候补 → 晋升」**
+```bash
+# 连报 6 个新用户:前 5 个占满正式位,第 6 个自动进候补
+for i in 1 2 3 4 5 6; do
+  curl -s -c jar_$i -X POST $BASE/api/dev/login -H 'content-type: application/json' \
+    -d "{\"secret\":\"$DEV\",\"openId\":\"test_user_fill$i\",\"name\":\"测试-Fill$i\"}" >/dev/null
+  curl -s -b jar_$i -X POST $BASE/api/sessions/$SID/signup -H 'content-type: application/json' \
+    -d '{"preferredCourtType":"竞技","gender":"男"}' >/dev/null
+done
+# 让某个正式用户取消 → 第一位候补自动晋升,再查 /api/sessions/current 的 signups 验证 isWaitlist
+```
+
+**模拟「比赛 → 计分 → 排行」**
+```bash
+# 推进到"进行中"(自动生成分组 + 轮转表)
+curl -s -X POST $BASE/api/dev/session-stage -H 'content-type: application/json' \
+  -d "{\"secret\":\"$DEV\",\"stage\":\"in_progress\"}"
+
+# 取一场比赛 id 填分
+curl -s -b jar $BASE/api/sessions/current | jq '.matches[0]'
+curl -s -b jar -X POST $BASE/api/matches/<matchId>/score -H 'content-type: application/json' \
+  -d '{"scoreA":15,"scoreB":12}'
+
+# 推进到"已结束",看排行榜
+curl -s -X POST $BASE/api/dev/session-stage -H 'content-type: application/json' \
+  -d "{\"secret\":\"$DEV\",\"stage\":\"finished\"}"
+curl -s -b jar $BASE/api/sessions/$SID/leaderboard | jq
+```
+
+### 方式 C:在测试企业里走真实 UI
+
+想验证真实的飞书登录 + 机器人卡片(而非伪登录):
+
+1. 用测试企业里的 admin 账号(飞书 OAuth 登录后)在 **Admin 面板的"运维"入口**手动推送报名卡片(对应 `POST /api/admin/ops/trigger-signup`),无需等周一。
+2. 用测试企业的真实成员点卡片 → 走飞书 OAuth → 在网页里报名。
+3. 阶段切换仍可用方式 B 的 `/api/dev/session-stage` 控制(真实定时器要等到周二活动时间)。
+
+> **数据安全**:dev 端点只操作 `mock_user_*` / `test_user_*` 前缀的假用户,`reset` 不会动真实数据。
+
+---
+
 ## 📸 截图
 
 > 截图待补充 - 实际使用界面包括:
