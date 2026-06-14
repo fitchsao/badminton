@@ -19,10 +19,25 @@ sudo usermod -aG docker $USER
 
 ### 2. 拉取代码
 
+仓库为**私有**,服务器需要一把**只读 deploy key** 才能克隆。
+
 ```bash
 sudo mkdir -p /opt/badminton
 sudo chown $USER:$USER /opt/badminton
 cd /opt/badminton
+
+# 在服务器上生成一把部署专用 key(无 passphrase,便于自动化 git pull)
+ssh-keygen -t ed25519 -C "deploy@badminton-server" -f ~/.ssh/badminton_deploy -N ""
+cat ~/.ssh/badminton_deploy.pub
+# 复制上面输出的公钥,到 GitHub:
+#   仓库 → Settings → Deploy keys → Add deploy key,粘贴(只读即可,不要勾 Allow write access)
+
+# 让 github.com 默认使用这把 deploy key
+cat >> ~/.ssh/config <<'EOF'
+Host github.com
+  IdentityFile ~/.ssh/badminton_deploy
+  IdentitiesOnly yes
+EOF
 
 git clone git@github.com:fitchsao/badminton.git .
 ```
@@ -32,11 +47,12 @@ git clone git@github.com:fitchsao/badminton.git .
 ```bash
 cp .env.example .env
 
-# 生成必要的 secret
-echo "COOKIE_HMAC_SECRET=$(openssl rand -hex 32)" >> .env
-echo "ADMIN_TRIGGER_TOKEN=$(openssl rand -hex 24)" >> .env
+# 生成必要的 secret 并写回 .env(替换占位值)
+sed -i "s|^COOKIE_HMAC_SECRET=.*|COOKIE_HMAC_SECRET=$(openssl rand -hex 32)|" .env
+sed -i "s|^ADMIN_TRIGGER_TOKEN=.*|ADMIN_TRIGGER_TOKEN=$(openssl rand -hex 24)|" .env
+sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=$(openssl rand -hex 16)|" .env
 
-# 编辑填入其他值(LARK_APP_ID 等)
+# 编辑填入其他值(LARK_APP_ID / LARK_APP_SECRET / LARK_TARGET_CHAT_ID / APP_BASE_URL 等)
 nano .env
 ```
 
@@ -53,12 +69,14 @@ docker compose logs -f backend  # 看启动日志
 
 ### 5. 数据库初始化
 
-首次启动时,migrations 会自动跑(backend 启动时执行)。
+迁移脚本 `backend/migrations/*.sql` 会在**数据库容器首次初始化时自动执行**
+(docker-compose 已把该目录挂载到 Postgres 的 `docker-entrypoint-initdb.d`)。
+全新部署 `docker compose up -d` 后即已建表,无需手动操作。
 
-如果想手动跑:
-```bash
-docker compose exec backend npm run migrate
-```
+> ⚠️ 自动执行**只在数据卷为空(全新部署)时发生**。若之后新增了迁移文件,需手动对已有库执行:
+> ```bash
+> docker compose exec -T db psql -U badminton badminton < backend/migrations/00X_xxx.sql
+> ```
 
 ### 6. Caddy 反向代理 + HTTPS
 

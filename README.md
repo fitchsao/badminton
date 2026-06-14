@@ -133,7 +133,7 @@
 ### 3 步部署
 
 ```bash
-# 1. 克隆代码
+# 1. 克隆代码(私有仓库,服务器需先配只读 deploy key,详见 DEPLOYMENT.md)
 git clone git@github.com:fitchsao/badminton.git
 cd badminton
 

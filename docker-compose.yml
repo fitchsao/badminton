@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: badminton
-      POSTGRES_PASSWORD: badminton_pwd
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-badminton_pwd}
       POSTGRES_DB: badminton
       TZ: ${TZ:-Asia/Shanghai}
     volumes:
@@ -21,12 +21,13 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      DATABASE_URL: postgres://badminton:badminton_pwd@db:5432/badminton
+      DATABASE_URL: postgres://badminton:${DB_PASSWORD:-badminton_pwd}@db:5432/badminton
     depends_on:
       db:
         condition: service_healthy
     ports:
-      - "3000:3000"
+      # 只绑本地回环,公网流量统一走 Caddy 反代,后端不直接暴露
+      - "127.0.0.1:3000:3000"
 
   frontend:
     build:
@@ -35,7 +36,8 @@ services:
         VITE_API_BASE: ${APP_BASE_URL:-http://localhost:3000}
     restart: unless-stopped
     ports:
-      - "8080:80"
+      # 只绑本地回环,公网流量统一走 Caddy 反代
+      - "127.0.0.1:8080:80"
 
 volumes:
   pgdata:
