@@ -1,10 +1,11 @@
 // 用 Chrome DevTools Protocol 截图,支持注入登录 cookie(以"参赛者"视角截图)。
 // 依赖:Node 21+(全局 WebSocket / fetch),无需 npm install。
-// 用法: node cdp-shot.mjs <url> <out.png> [cookieValue] [width] [height] [port]
+// 用法: node cdp-shot.mjs <url> <out.png> [cookieValue] [width] [height] [port] [clickText]
 //   cookieValue 形如 "bm_user=xxxxx";留空则未登录视角。
+//   clickText   截图前先点击页面上"文字包含该串"的按钮/链接(用于截开弹窗后的抽屉)。
 import fs from "node:fs";
 
-const [url, out, cookie = "", W = "500", H = "1180", PORT = "9222"] = process.argv.slice(2);
+const [url, out, cookie = "", W = "500", H = "1180", PORT = "9222", clickText = ""] = process.argv.slice(2);
 const width = +W, height = +H;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -44,6 +45,17 @@ if (cookie) {
 
 await send("Page.navigate", { url });
 await sleep(3800); // 等 React 拉数据 + 渲染
+
+if (clickText) {
+  await send("Runtime.enable");
+  const js = `(()=>{const t=${JSON.stringify(clickText)};` +
+    `const els=[...document.querySelectorAll('button,a,[role=button],.full-group-link,.text-link,.btn-action,.btn-secondary')];` +
+    `const el=els.find(e=>((e.textContent||'').includes(t)));` +
+    `if(el){el.click();return true}return false})()`;
+  await send("Runtime.evaluate", { expression: js });
+  await sleep(1900); // 等抽屉滑出
+}
+
 const { data } = await send("Page.captureScreenshot", {
   format: "png", captureBeyondViewport: true,
   clip: { x: 0, y: 0, width, height, scale: 1 },

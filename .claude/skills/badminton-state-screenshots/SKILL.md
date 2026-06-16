@@ -19,6 +19,21 @@ bash .claude/skills/badminton-state-screenshots/shot.sh
 - 只截部分:`shot.sh ~/Downloads/我的目录 "signup_open finished"`
 - 跑完把 `OUTDIR=...` 路径告诉用户即可。
 
+## 补充状态(候补 + 各弹窗)
+
+主 5 状态之外的视角,用 `extra-shots.sh` 一键出 6 张:
+
+```bash
+bash .claude/skills/badminton-state-screenshots/extra-shots.sh
+```
+
+覆盖:① 候补中(报名进候补)② 报名失败/候补未晋升(分组阶段)③ 完整分组弹窗 ④ 查看排名弹窗 ⑤ 查看详细(轮转详情)⑥ 查看其他场次。原理:多报 2 人造出候补用户;`cdp-shot.mjs` 的第 7 个参数 `clickText` 会在截图前点击"文字包含该串"的按钮以弹出抽屉。
+
+单独截某个弹窗:
+```bash
+node cdp-shot.mjs "$BASE" out.png "$COOKIE" 500 1180 9222 "完整分组"
+```
+
 ## 配置来源(脚本自动读取,一般不用管)
 
 - `BASE_URL` —— 缺省 `https://klookbadminton.duckdns.org`(可用 env 覆盖)
