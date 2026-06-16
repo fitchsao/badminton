@@ -46,9 +46,10 @@ for st in $STAGES; do
   file="$OUT/$name-$st.png"
   # ② headless 截图。关键:独立 profile(避免锁冲突)+ --no-proxy-server(绕开内网 PAC)
   P=$(mktemp -d /tmp/bdmchrome.XXXX)
+  # 宽度 500:app max-width 480 + 余量,避免右侧被切
   "$CHROME" --headless=new --disable-gpu --hide-scrollbars --no-first-run \
     --user-data-dir="$P" --no-proxy-server \
-    --window-size=440,1100 --virtual-time-budget=6000 --force-device-scale-factor=2 \
+    --window-size=500,1180 --virtual-time-budget=6000 --force-device-scale-factor=2 \
     --screenshot="$file" "$BASE" >/dev/null 2>&1 &
   pid=$!
   # ③ 比赛/赛后页有 20s 轮询,Chrome 可能不退出 → 等文件出现(最多 25s)后强杀
