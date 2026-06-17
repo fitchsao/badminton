@@ -34,6 +34,44 @@
 
 > 每张表用一个稳定业务键(如 `session_id`、`signup id`)作为 upsert 依据,避免重复。
 
+## 已创建的多维表格(2026-06-17 via MCP)
+
+- App:**客乐羽 · 数据镜像**
+- `app_token` = `XOctbCAoQaSVNasuzQPlv7magiz`
+- 链接:https://klook.sg.larksuite.com/base/XOctbCAoQaSVNasuzQPlv7magiz
+
+| 表 | table_id |
+|---|---|
+| 场次 Sessions ✓ | `tblhRX49RSIaXE0R` |
+| 报名 Signups | `tblSsYpeoZ9ixlaK` |
+| 场地 Courts | `tblfE8XCUYT4GDuO` |
+| 分组 Assignments | `tblEmsXltjpnA0VM` |
+| 对局 Matches | `tblR4HRzIhWFgPOZ` |
+| 用户 Users | `tblU8lqqMT1j30Xf` |
+| 订阅 Subscriptions | `tbl6hzkjaX7URSST` |
+| 配置 Config | `tblSxncB8zd77AFG` |
+| 审计 Audit | `tblIQG9jfy7qSI19` |
+
+> ⚠️ 还有两张**空表**需在 Bitable UI 手动删除:自动生成的默认表(`tblJPP9Qpkt9pqiw`)、以及一张误建的空「场次 Sessions」(`tbl7LdApETtrk33c`)。正式用的是带 ✓ 的那张。
+
+`.env` 对应(建表已回填):
+```
+BITABLE_APP_TOKEN=XOctbCAoQaSVNasuzQPlv7magiz
+BITABLE_TABLE_SESSIONS=tblhRX49RSIaXE0R
+BITABLE_TABLE_SIGNUPS=tblSsYpeoZ9ixlaK
+BITABLE_TABLE_COURTS=tblfE8XCUYT4GDuO
+BITABLE_TABLE_ASSIGNMENTS=tblEmsXltjpnA0VM
+BITABLE_TABLE_MATCHES=tblR4HRzIhWFgPOZ
+BITABLE_TABLE_USERS=tblU8lqqMT1j30Xf
+BITABLE_TABLE_SUBSCRIPTIONS=tbl6hzkjaX7URSST
+BITABLE_TABLE_CONFIG=tblSxncB8zd77AFG
+BITABLE_TABLE_AUDIT=tblIQG9jfy7qSI19
+BITABLE_SYNC_ENABLED=1
+```
+
+> ⚠️ **访问权限关键点**:此 Base 由 MCP(某 Lark 应用)创建。后端用的是另一个 Lark 应用(`LARK_APP_ID`)。
+> 后端要能写这张表,需把**后端应用**加为该 Base 的协作者(在 Base「⋯ → 添加文档应用/协作者」里添加后端机器人),否则即使有 `bitable:app` 权限也会 403。
+
 ## 落地步骤(待你提供凭据后由我实现)
 
 1. 我用已连接的飞书 MCP **自动建好 App + 9 张表 + 字段**(或你给一个已建好的 App)。
