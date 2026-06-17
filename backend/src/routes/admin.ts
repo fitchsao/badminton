@@ -15,6 +15,63 @@ import { logAudit, listRecentAudit } from "../services/audit.js";
 import { triggerWeeklySignup } from "../scheduler.js";
 import { pool } from "../db.js";
 
+type SState = "not_open" | "open" | "closed_pre_event" | "in_progress" | "finished";
+const STATE_ZH: Record<SState, string> = {
+  not_open: "预告", open: "报名中", closed_pre_event: "分组",
+  in_progress: "比赛中", finished: "已结束",
+};
+function stateOf(s: {
+  signup_open_at: Date; signup_close_at: Date;
+  event_start_at: Date; event_end_at: Date;
+}): SState {
+  const now = new Date();
+  if (now < s.signup_open_at) return "not_open";
+  if (now < s.signup_close_at) return "open";
+  if (now < s.event_start_at) return "closed_pre_event";
+  if (now < s.event_end_at) return "in_progress";
+  return "finished";
+}
+async function sessionStateById(id: number): Promise<SState | null> {
+  const r = await pool.query(
+    `SELECT signup_open_at, signup_close_at, event_start_at, event_end_at
+       FROM sessions WHERE id = $1`, [id]);
+  return r.rows[0] ? stateOf(r.rows[0]) : null;
+}
+/** 返回 null 表示放行;否则返回错误对象(调用方需 reply.code(409) 后 return 它) */
+async function stageGuard(
+  sessionId: number, allowed: SState[], action: string,
+): Promise<{ error: string; code: string } | null> {
+  const st = await sessionStateById(sessionId);
+  if (!st) return { error: "场次不存在", code: "SESSION_NOT_FOUND" };
+  if (!allowed.includes(st)) {
+    const want = allowed.map((s) => STATE_ZH[s]).join("/");
+    return { error: `当前为「${STATE_ZH[st]}」阶段,「${action}」仅在「${want}」阶段可操作`, code: "STAGE_LOCKED" };
+  }
+  return null;
+}
+async function sessionIdOfCourt(courtId: number): Promise<number | null> {
+  const r = await pool.query<{ session_id: number }>(
+    `SELECT session_id FROM courts WHERE id = $1`, [courtId]);
+  return r.rows[0]?.session_id ?? null;
+}
+async function sessionIdOfAssignment(assignmentId: number): Promise<number | null> {
+  const r = await pool.query<{ session_id: number }>(
+    `SELECT c.session_id FROM court_assignments ca
+       JOIN courts c ON c.id = ca.court_id WHERE ca.id = $1`, [assignmentId]);
+  return r.rows[0]?.session_id ?? null;
+}
+/** 当前场次(getCurrentSession 选中的那个)的阶段;无场次返回 null */
+async function currentSessionState(): Promise<SState | null> {
+  const r = await pool.query(
+    `SELECT signup_open_at, signup_close_at, event_start_at, event_end_at
+       FROM sessions
+      WHERE event_end_at > NOW() - INTERVAL '48 hours'
+      ORDER BY CASE WHEN NOW() BETWEEN signup_open_at AND event_end_at THEN 0
+                    WHEN signup_open_at > NOW() THEN 1 ELSE 2 END ASC, id DESC
+      LIMIT 1`);
+  return r.rows[0] ? stateOf(r.rows[0]) : null;
+}
+
 export async function adminRoutes(app: FastifyInstance) {
   // 守卫:所有 /api/admin/* 路径必须 admin
   app.addHook("preHandler", async (req, _reply) => {
@@ -72,6 +129,12 @@ export async function adminRoutes(app: FastifyInstance) {
           reply.code(400);
           return { error: "场地配置非法" };
         }
+      }
+      // #4/#5:场地数量/名称仅「预告」阶段可改,报名开始后锁定
+      const st = await currentSessionState();
+      if (st && st !== "not_open") {
+        reply.code(409);
+        return { error: `当前为「${STATE_ZH[st]}」阶段,场地配置仅在「预告」阶段可修改`, code: "STAGE_LOCKED" };
       }
       await setConfig("courts_template", v);
       return { ok: true };
@@ -168,8 +231,11 @@ export async function adminRoutes(app: FastifyInstance) {
    */
   app.post<{ Params: { id: string } }>(
     "/api/admin/sessions/:id/recreate-courts",
-    async (req) => {
-      const courts = await recreateCourtsForSession(Number(req.params.id));
+    async (req, reply) => {
+      const sid = Number(req.params.id);
+      const g = await stageGuard(sid, ["not_open"], "重建场地");
+      if (g) { reply.code(409); return g; }
+      const courts = await recreateCourtsForSession(sid);
       return { ok: true, courts };
     },
   );
@@ -179,8 +245,11 @@ export async function adminRoutes(app: FastifyInstance) {
    */
   app.post<{ Params: { id: string } }>(
     "/api/admin/sessions/:id/generate-assignments",
-    async (req) => {
-      await generateAssignments(Number(req.params.id));
+    async (req, reply) => {
+      const sid = Number(req.params.id);
+      const g = await stageGuard(sid, ["closed_pre_event"], "调整分组");
+      if (g) { reply.code(409); return g; }
+      await generateAssignments(sid);
       return { ok: true };
     },
   );
@@ -192,6 +261,8 @@ export async function adminRoutes(app: FastifyInstance) {
     "/api/admin/sessions/:id/reassign",
     async (req, reply) => {
       const sessionId = Number(req.params.id);
+      const g = await stageGuard(sessionId, ["closed_pre_event"], "重新分组");
+      if (g) { reply.code(409); return g; }
       // 清掉旧的 assignments + matches
       const { pool } = await import("../db.js");
       await pool.query(
@@ -212,8 +283,10 @@ export async function adminRoutes(app: FastifyInstance) {
    */
   app.post<{ Params: { id: string } }>(
     "/api/admin/sessions/:id/regenerate-rotation",
-    async (req) => {
+    async (req, reply) => {
       const sessionId = Number(req.params.id);
+      const g = await stageGuard(sessionId, ["closed_pre_event"], "重新生成轮换");
+      if (g) { reply.code(409); return g; }
       const { pool } = await import("../db.js");
       await pool.query(
         `DELETE FROM matches WHERE court_id IN (SELECT id FROM courts WHERE session_id = $1)`,
@@ -232,7 +305,10 @@ export async function adminRoutes(app: FastifyInstance) {
     Body: { newCourtId: number };
   }>(
     "/api/admin/assignments/:id/move",
-    async (req) => {
+    async (req, reply) => {
+      const sid = await sessionIdOfAssignment(Number(req.params.id));
+      const g = await stageGuard(sid ?? -1, ["closed_pre_event"], "移动分组成员");
+      if (g) { reply.code(409); return g; }
       await moveAssignment(Number(req.params.id), req.body.newCourtId);
       return { ok: true };
     },
@@ -243,7 +319,10 @@ export async function adminRoutes(app: FastifyInstance) {
    */
   app.delete<{ Params: { id: string } }>(
     "/api/admin/assignments/:id",
-    async (req) => {
+    async (req, reply) => {
+      const sid = await sessionIdOfAssignment(Number(req.params.id));
+      const g = await stageGuard(sid ?? -1, ["closed_pre_event"], "删除分组成员");
+      if (g) { reply.code(409); return g; }
       await deleteAssignment(Number(req.params.id));
       return { ok: true };
     },
@@ -269,6 +348,9 @@ export async function adminRoutes(app: FastifyInstance) {
         reply.code(400);
         return { error: "必须提供 larkOpenId 或 manualName" };
       }
+      const sid = await sessionIdOfCourt(Number(req.params.courtId));
+      const g = await stageGuard(sid ?? -1, ["closed_pre_event"], "向场地添加成员");
+      if (g) { reply.code(409); return g; }
       const id = await addAssignment({
         courtId: Number(req.params.courtId),
         larkOpenId, manualName, manualGender,

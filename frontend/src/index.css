@@ -1887,3 +1887,14 @@ select option { background: var(--bg-card); color: var(--text); }
 /* —— action chip:白底 3D —— */
 .btn-action { background: #fff; box-shadow: 0 2px 0 var(--border-strong); }
 .btn-action:hover { color: var(--primary-ink); border-color: var(--primary); }
+
+/* —— 未登录提示页 —— */
+.login-prompt {
+  text-align: center;
+  max-width: 340px;
+  margin: 16vh auto 0;
+  padding: 30px 24px;
+}
+.login-prompt-icon { font-size: 54px; line-height: 1; }
+.login-prompt-title { font-size: 22px; font-weight: 900; margin: 12px 0 6px; }
+.login-prompt-sub { color: var(--text-muted); font-size: 14px; line-height: 1.6; margin-bottom: 20px; }

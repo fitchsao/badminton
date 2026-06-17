@@ -15,15 +15,22 @@ export function App() {
   const [tab, setTab] = useState<BottomTab>("activity");
   // 点头像 → 简约 modal
   const [previewUser, setPreviewUser] = useState<string | null>(null);
+  // 未登录 → 显示登录提示(确认后再跳转飞书授权,而非自动跳)
+  const [needLogin, setNeedLogin] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
     try {
       const d = await api.getCurrentSession();
+      // 未登录(无飞书登录态)→ 提示登录,确认后再跳授权
+      if (!d.me) {
+        setNeedLogin(true);
+        return;
+      }
       setData(d);
     } catch (err: any) {
       if (err.status === 401) {
-        redirectToLarkLogin();
+        setNeedLogin(true);
         return;
       }
       setError(err.message);
@@ -33,6 +40,10 @@ export function App() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  if (needLogin) {
+    return <LoginPrompt />;
+  }
 
   if (loading) {
     return (
@@ -164,4 +175,22 @@ function initials(name: string): string {
 function redirectToLarkLogin() {
   const here = window.location.href;
   window.location.href = `/api/auth/start?return=${encodeURIComponent(here)}`;
+}
+
+/** 未登录提示页:点击后再跳转飞书授权 */
+function LoginPrompt() {
+  return (
+    <div className="app">
+      <div className="login-prompt card">
+        <div className="login-prompt-icon">🏸</div>
+        <div className="login-prompt-title">需要登录</div>
+        <div className="login-prompt-sub">
+          使用飞书账号登录后即可查看活动、报名与战绩
+        </div>
+        <button className="btn-primary" onClick={redirectToLarkLogin}>
+          使用飞书登录
+        </button>
+      </div>
+    </div>
+  );
 }
