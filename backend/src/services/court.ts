@@ -1,6 +1,6 @@
 import type { PoolClient } from "pg";
 import { pool } from "../db.js";
-import { getCourtTemplate } from "./settings.js";
+import { getCourtTemplate, type CourtTemplate } from "./settings.js";
 
 export interface Court {
   id: number;
@@ -17,8 +17,9 @@ export interface Court {
 export async function createCourtsForSession(
   sessionId: number,
   client?: PoolClient,
+  template?: CourtTemplate[],
 ): Promise<Court[]> {
-  const tpl = await getCourtTemplate();
+  const tpl = template ?? await getCourtTemplate();
   const q = client ?? pool;
   const created: Court[] = [];
   for (let i = 0; i < tpl.length; i++) {

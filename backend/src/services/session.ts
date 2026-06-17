@@ -1,7 +1,10 @@
 import { pool } from "../db.js";
 import { config } from "../config.js";
-import { getSchedule, getCourtTemplate } from "./settings.js";
+import {
+  getSchedule, getCourtTemplateForDate, getWhitelist, type CourtTemplate,
+} from "./settings.js";
 import { createCourtsForSession } from "./court.js";
+import { upsertPref } from "./prefs.js";
 
 export interface Session {
   id: number;
@@ -94,7 +97,8 @@ function tzOffsetMs(date: Date, tz: string): number {
  */
 export async function getOrCreateCurrentWeekSession(): Promise<Session> {
   const times = await computeSessionTimes();
-  const tpl = await getCourtTemplate();
+  // #4:按活动日期选模板(每月特殊周二 = 3 场地)
+  const tpl = await getCourtTemplateForDate(times.eventStartAt, config.app.tz);
   const maxSlots = tpl.reduce((s, c) => s + c.max_players, 0);
 
   const existing = await pool.query<Session>(
@@ -119,10 +123,43 @@ export async function getOrCreateCurrentWeekSession(): Promise<Session> {
   );
   const session = inserted.rows[0];
 
-  // 创建场地
-  await createCourtsForSession(session.id);
+  // 创建场地(用按日期选出的模板)
+  await createCourtsForSession(session.id, undefined, tpl);
+
+  // #1 白名单:新场次创建即把白名单成员置于报名名单最前(无需本人报名)
+  await seedWhitelistSignups(session.id, tpl);
 
   return session;
+}
+
+/**
+ * #1 把白名单成员作为报名记录写入(创建时即写 → created_at 最早 → 排在最前)
+ * 幂等:部分唯一索引 (session_id, lark_open_id) WHERE cancelled_at IS NULL
+ */
+async function seedWhitelistSignups(
+  sessionId: number, tpl: CourtTemplate[],
+): Promise<void> {
+  const wl = await getWhitelist();
+  if (wl.length === 0) return;
+  const fallbackCourt = tpl[0]?.court_type ?? "竞技";
+  for (const m of wl) {
+    const court = m.preferredCourtType ?? fallbackCourt;
+    try {
+      await pool.query(
+        `INSERT INTO signups
+           (session_id, lark_open_id, user_name, user_avatar, preferred_court_type)
+         VALUES ($1, $2, $3, NULL, $4)
+         ON CONFLICT (session_id, lark_open_id) WHERE cancelled_at IS NULL DO NOTHING`,
+        [sessionId, m.openId, m.name, court],
+      );
+      if (m.gender) {
+        await upsertPref({
+          openId: m.openId, userName: m.name,
+          gender: m.gender, lastCourtType: court,
+        });
+      }
+    } catch { /* 单个失败不阻塞 */ }
+  }
 }
 
 export async function getCurrentSession(): Promise<Session | null> {

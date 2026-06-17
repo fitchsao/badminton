@@ -1,8 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { requireAdmin, getCurrentUser } from "./auth.js";
 import {
-  getConfig, setConfig,
-  type CourtTemplate, type ScheduleConfig,
+  getConfig, setConfig, getWhitelist, getSpecialCourtTemplate,
+  type CourtTemplate, type ScheduleConfig, type WhitelistMember,
 } from "../services/settings.js";
 import {
   moveAssignment, deleteAssignment, addAssignment,
@@ -105,10 +105,14 @@ export async function adminRoutes(app: FastifyInstance) {
     const adminOpenIds = await getConfig<string[]>("admin_open_ids");
     const scoreCap = await getConfig<number>("score_cap");
     const venue = await getConfig<{ name: string; address: string }>("venue");
+    const whitelist = await getWhitelist();
+    const specialCourtsTemplate = await getSpecialCourtTemplate();
     return {
       courtsTemplate, schedule, adminOpenIds,
       scoreCap: scoreCap ?? 15,
       venue: venue ?? { name: "", address: "" },
+      whitelist,
+      specialCourtsTemplate,
     };
   });
 
@@ -137,6 +141,56 @@ export async function adminRoutes(app: FastifyInstance) {
         return { error: `当前为「${STATE_ZH[st]}」阶段,场地配置仅在「预告」阶段可修改`, code: "STAGE_LOCKED" };
       }
       await setConfig("courts_template", v);
+      return { ok: true };
+    },
+  );
+
+  /**
+   * #4 改「三场地特殊日」模板(对抗/竞技/休闲),同样仅「预告」阶段可改
+   */
+  app.put<{ Body: CourtTemplate[] }>(
+    "/api/admin/config/special_courts_template",
+    async (req, reply) => {
+      const v = req.body;
+      if (!Array.isArray(v) || v.length === 0) {
+        reply.code(400);
+        return { error: "至少需要 1 个场地" };
+      }
+      for (const c of v) {
+        if (!c.name || (c.court_type !== "竞技" && c.court_type !== "休闲")
+            || !Number.isInteger(c.max_players) || c.max_players < 1) {
+          reply.code(400);
+          return { error: "场地配置非法" };
+        }
+      }
+      const st = await currentSessionState();
+      if (st && st !== "not_open") {
+        reply.code(409);
+        return { error: `当前为「${STATE_ZH[st]}」阶段,场地配置仅在「预告」阶段可修改`, code: "STAGE_LOCKED" };
+      }
+      await setConfig("special_courts_template", v);
+      return { ok: true };
+    },
+  );
+
+  /**
+   * #1 改报名白名单(白名单成员每轮自动置于报名名单最前,无需本人报名)
+   */
+  app.put<{ Body: WhitelistMember[] }>(
+    "/api/admin/config/whitelist",
+    async (req, reply) => {
+      const v = req.body;
+      if (!Array.isArray(v)) {
+        reply.code(400);
+        return { error: "白名单必须是数组" };
+      }
+      for (const m of v) {
+        if (!m || typeof m.openId !== "string" || !m.openId.startsWith("ou_") || !m.name) {
+          reply.code(400);
+          return { error: `白名单项非法(openId 需以 ou_ 开头且有姓名):${JSON.stringify(m)}` };
+        }
+      }
+      await setConfig("whitelist", v);
       return { ok: true };
     },
   );

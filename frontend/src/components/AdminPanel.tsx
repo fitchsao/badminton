@@ -417,6 +417,154 @@ function ConfigTab({
         </div>
       </div>
 
+      {/* #4 三场地特殊日 */}
+      <div className="card">
+        <h3 className="card-title">
+          <span className="card-title-icon">⚔️</span>三场地特殊日
+        </h3>
+        <div className="hint" style={{ marginBottom: 12 }}>
+          每月「第一个工作日那周的周二」自动启用此 3 场地配置(对抗 / 竞技 / 休闲)。仅「预告」阶段可改。
+        </div>
+        {(cfg.specialCourtsTemplate ?? []).map((c, i) => (
+          <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+            <input
+              className="text-input" style={{ flex: 1 }}
+              placeholder="名称" value={c.name}
+              onChange={(e) => {
+                const v = [...(cfg.specialCourtsTemplate ?? [])];
+                v[i] = { ...v[i], name: e.target.value };
+                setCfg({ ...cfg, specialCourtsTemplate: v });
+              }}
+            />
+            <select
+              value={c.court_type}
+              onChange={(e) => {
+                const v = [...(cfg.specialCourtsTemplate ?? [])];
+                v[i] = { ...v[i], court_type: e.target.value as any };
+                setCfg({ ...cfg, specialCourtsTemplate: v });
+              }}
+            >
+              <option value="竞技">竞技</option>
+              <option value="休闲">休闲</option>
+            </select>
+            <input
+              className="text-input" type="number" min={2} max={20}
+              style={{ width: 60, textAlign: "center" }}
+              value={c.max_players}
+              onChange={(e) => {
+                const v = [...(cfg.specialCourtsTemplate ?? [])];
+                v[i] = { ...v[i], max_players: Number(e.target.value) };
+                setCfg({ ...cfg, specialCourtsTemplate: v });
+              }}
+            />
+            <button
+              className="btn-icon" style={{ color: "var(--danger)" }}
+              onClick={() => setCfg({
+                ...cfg,
+                specialCourtsTemplate: (cfg.specialCourtsTemplate ?? []).filter((_, j) => j !== i),
+              })}
+            >🗑</button>
+          </div>
+        ))}
+        <button
+          className="btn-link"
+          onClick={() => setCfg({
+            ...cfg,
+            specialCourtsTemplate: [
+              ...(cfg.specialCourtsTemplate ?? []),
+              { name: "新场地", court_type: "休闲", max_players: 8 },
+            ],
+          })}
+        >+ 增加场地</button>
+        <button
+          className="btn-primary" disabled={saving}
+          onClick={async () => {
+            setSaving(true); setError(null);
+            try {
+              await api.admin.setSpecialCourtsTemplate(cfg.specialCourtsTemplate!);
+              flash("✓ 已保存");
+            } catch (err: any) { setError(err.message); }
+            finally { setSaving(false); }
+          }}
+          style={{ marginTop: 12 }}
+        >保存</button>
+      </div>
+
+      {/* #1 报名白名单 */}
+      <div className="card">
+        <h3 className="card-title">
+          <span className="card-title-icon">🏅</span>报名白名单
+        </h3>
+        <div className="hint" style={{ marginBottom: 12 }}>
+          白名单成员每轮自动置于报名名单最前,无需本人报名;下一轮(新场次创建)生效。
+        </div>
+        {(cfg.whitelist ?? []).map((m, i) => (
+          <div key={i} style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+            <input
+              className="text-input" style={{ flex: "1 1 88px" }}
+              placeholder="姓名" value={m.name}
+              onChange={(e) => {
+                const v = [...(cfg.whitelist ?? [])];
+                v[i] = { ...v[i], name: e.target.value };
+                setCfg({ ...cfg, whitelist: v });
+              }}
+            />
+            <input
+              className="text-input"
+              style={{ flex: "2 1 150px", fontFamily: "Outfit, monospace", fontSize: 12 }}
+              placeholder="ou_xxxxxxxx" value={m.openId}
+              onChange={(e) => {
+                const v = [...(cfg.whitelist ?? [])];
+                v[i] = { ...v[i], openId: e.target.value.trim() };
+                setCfg({ ...cfg, whitelist: v });
+              }}
+            />
+            <select
+              value={m.gender ?? ""}
+              onChange={(e) => {
+                const v = [...(cfg.whitelist ?? [])];
+                v[i] = { ...v[i], gender: (e.target.value || undefined) as any };
+                setCfg({ ...cfg, whitelist: v });
+              }}
+            >
+              <option value="">性别</option>
+              <option value="男">男</option>
+              <option value="女">女</option>
+            </select>
+            <button
+              className="btn-icon" style={{ color: "var(--danger)" }}
+              onClick={() => setCfg({
+                ...cfg, whitelist: (cfg.whitelist ?? []).filter((_, j) => j !== i),
+              })}
+            >🗑</button>
+          </div>
+        ))}
+        <button
+          className="btn-link"
+          onClick={() => setCfg({
+            ...cfg, whitelist: [...(cfg.whitelist ?? []), { openId: "", name: "" }],
+          })}
+        >+ 增加白名单成员</button>
+        <button
+          className="btn-primary" disabled={saving}
+          onClick={async () => {
+            const list = (cfg.whitelist ?? [])
+              .map((m) => ({ ...m, openId: m.openId.trim(), name: m.name.trim() }))
+              .filter((m) => m.openId && m.name);
+            for (const m of list) {
+              if (!m.openId.startsWith("ou_")) { setError(`open_id 非法:${m.openId}`); return; }
+            }
+            setSaving(true); setError(null);
+            try {
+              await api.admin.setWhitelist(list);
+              flash("✓ 已保存");
+            } catch (err: any) { setError(err.message); }
+            finally { setSaving(false); }
+          }}
+          style={{ marginTop: 12 }}
+        >保存白名单</button>
+      </div>
+
       {/* 时间表 */}
       <div className="card">
         <h3 className="card-title">

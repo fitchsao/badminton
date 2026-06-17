@@ -157,6 +157,15 @@ export interface AdminConfig {
   adminOpenIds: string[] | null;
   scoreCap: number;
   venue: { name: string; address: string };
+  whitelist: WhitelistMember[];
+  specialCourtsTemplate: { name: string; court_type: "竞技" | "休闲"; max_players: number }[];
+}
+
+export interface WhitelistMember {
+  openId: string;
+  name: string;
+  gender?: "男" | "女";
+  preferredCourtType?: "竞技" | "休闲";
 }
 
 async function req<T = any>(input: string, init?: RequestInit): Promise<T> {
@@ -202,6 +211,14 @@ export const api = {
     getConfig: () => req<AdminConfig>("/api/admin/config"),
     setCourtsTemplate: (v: AdminConfig["courtsTemplate"]) =>
       req("/api/admin/config/courts_template", {
+        method: "PUT", body: JSON.stringify(v),
+      }),
+    setSpecialCourtsTemplate: (v: AdminConfig["specialCourtsTemplate"]) =>
+      req("/api/admin/config/special_courts_template", {
+        method: "PUT", body: JSON.stringify(v),
+      }),
+    setWhitelist: (v: WhitelistMember[]) =>
+      req("/api/admin/config/whitelist", {
         method: "PUT", body: JSON.stringify(v),
       }),
     setSchedule: (v: AdminConfig["schedule"]) =>
