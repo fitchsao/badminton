@@ -84,11 +84,11 @@
 
 | 层 | 技术 |
 |---|---|
-| **前端** | React 18 · Vite · TypeScript · 原生 CSS |
+| **前端** | React 18 · Vite · TypeScript · 原生 CSS(Duolingo 风格亮色主题) |
 | **后端** | Node.js · Fastify · TypeScript |
-| **数据** | PostgreSQL 16 |
+| **数据** | PostgreSQL 16(+ 飞书多维表格镜像同步) |
 | **部署** | Docker Compose · Caddy (自动 HTTPS) |
-| **集成** | Lark Open Platform (OAuth · Bot Message) |
+| **集成** | Lark Open Platform (OAuth · Bot Message · Bitable) |
 | **测试** | Vitest (25 个 API 集成测试) |
 
 ---
@@ -287,6 +287,18 @@ curl -s -b jar $BASE/api/sessions/$SID/leaderboard | jq
 
 ---
 
+## 🆕 V4.0 迭代
+
+- **🎨 Duolingo 风格 UI** — 亮色主题、3D 按钮、圆角卡片(纯 CSS 重构,交互/逻辑不变)。
+- **🏅 报名白名单** — 管理员可配白名单成员,每轮(新场次创建时)自动置于报名名单最前、无需本人报名;管理配置页可增删。
+- **🔐 登录提示** — 未登录访问时显示登录页,点「使用飞书登录」后才跳转授权(不再自动跳)。
+- **⚔️ 三场地特殊日** — 每月「第一个工作日所在那一周」的周二自动启用 3 场地(对抗 / 竞技 / 休闲,各 8 人,共 24 名额);特殊模板可配,仅「预告」阶段可改。
+- **🔒 阶段锁定** — 场地配置仅「预告」阶段可改;分组 / 轮换仅「分组」阶段可改;其他阶段拒绝(HTTP 409)。
+- **🖼 新图标** — 圆形徽章应用图标(`frontend/public/icon.png`)。
+- **🗂 飞书多维表格镜像**(进行中)— Postgres 仍为权威主库,数据镜像同步到飞书多维表格供组员在飞书内查看;9 张表已建,同步层开发中,详见 [`docs/bitable-sync.md`](./docs/bitable-sync.md)。
+
+---
+
 ## 🗺 开发路线
 
 - [x] V1: MVP 报名机器人
@@ -294,8 +306,9 @@ curl -s -b jar $BASE/api/sessions/$SID/leaderboard | jq
 - [x] V3: 段位 / 战绩 / 海报 / 订阅
 - [x] V3.5: 5 段状态机 UX 重构
 - [x] V3.9: 多人协作计分 (20s 同步)
-- [ ] V4: 上架 Lark 应用市场 (公开版)
-- [ ] V4.1: 数据看板 / 运营指标
+- [x] V4.0: Duolingo UI · 报名白名单 · 登录提示 · 三场地特殊日 · 阶段锁定 · 新图标
+- [ ] V4.1: 飞书多维表格镜像同步(表已建,同步层进行中)
+- [ ] V4.2: 上架 Lark 应用市场 / 数据看板
 
 ---
 
